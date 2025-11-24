@@ -1,0 +1,839 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, Clock, ChevronLeft, ChevronRight, Printer, QrCode, X, Download, Upload } from 'lucide-react';
+
+const ActivityLog = () => {
+  const [currentDay, setCurrentDay] = useState(0);
+  const [currentWeek, setCurrentWeek] = useState(0);
+  const [activities, setActivities] = useState({});
+  const [showForm, setShowForm] = useState(false);
+  const [editingCell, setEditingCell] = useState(null);
+  const [viewMode, setViewMode] = useState('day');
+  const [showQR, setShowQR] = useState(false);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [importedData, setImportedData] = useState(null);
+  const [importStats, setImportStats] = useState({ new: 0, conflicts: 0 });
+  const fileInputRef = useRef(null);
+  const [formData, setFormData] = useState({
+    activity: '',
+    pleasure: '',
+    mastery: '',
+    time: '',
+    day: 0,
+    week: 0
+  });
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('activityLog');
+    if (saved) {
+      try {
+        setActivities(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to load saved data:', e);
+      }
+    }
+  }, []);
+
+  // Save to localStorage whenever activities change
+  useEffect(() => {
+    localStorage.setItem('activityLog', JSON.stringify(activities));
+  }, [activities]);
+
+  const days = ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'];
+  const timeSlots = [
+    '6-7am', '7-8am', '8-9am', '9-10am', '10-11am', '11am-12pm',
+    '12-1pm', '1-2pm', '2-3pm', '3-4pm', '4-5pm', '5-6pm',
+    '6-7pm', '7-8pm', '8-9pm', '9-10pm', '10-11pm', '11pm-12am'
+  ];
+
+  const getActivityKey = (week, day, time) => `${week}-${day}-${time}`;
+
+  const getWeekDates = (weekOffset) => {
+    const today = new Date();
+    const currentDayOfWeek = today.getDay();
+    const mondayOffset = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + mondayOffset + (weekOffset * 7));
+    
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  };
+
+  const formatDate = (date) => {
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  };
+
+  const getWeekRange = (weekOffset) => {
+    const dates = getWeekDates(weekOffset);
+    return `${formatDate(dates[0])} - ${formatDate(dates[6])}`;
+  };
+
+  const weekHasEntries = (week) => {
+    return Object.keys(activities).some(key => key.startsWith(`${week}-`));
+  };
+
+  const handleCellClick = (day, time) => {
+    const key = getActivityKey(currentWeek, day, time);
+    const existing = activities[key];
+    
+    setFormData({
+      activity: existing?.activity || '',
+      pleasure: existing?.pleasure || '',
+      mastery: existing?.mastery || '',
+      time,
+      day,
+      week: currentWeek
+    });
+    setEditingCell({ day, time });
+    setShowForm(true);
+  };
+
+  const handleQuickAdd = () => {
+    setFormData({
+      activity: '',
+      pleasure: '',
+      mastery: '',
+      time: timeSlots[0],
+      day: currentDay,
+      week: currentWeek,
+      customTime: ''
+    });
+    setEditingCell(null);
+    setShowForm(true);
+  };
+
+  const handleCurrentTime = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    
+    let timeIndex = Math.max(0, hour - 6);
+    if (timeIndex >= timeSlots.length) timeIndex = timeSlots.length - 1;
+    
+    setFormData({
+      activity: '',
+      pleasure: '',
+      mastery: '',
+      time: timeSlots[timeIndex],
+      day: currentDay,
+      week: currentWeek,
+      customTime: ''
+    });
+    setEditingCell(null);
+    setShowForm(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.activity) return;
+    
+    const timeToUse = formData.customTime || formData.time;
+    const key = getActivityKey(formData.week, formData.day, timeToUse);
+    setActivities({
+      ...activities,
+      [key]: {
+        activity: formData.activity,
+        pleasure: formData.pleasure,
+        mastery: formData.mastery
+      }
+    });
+    
+    setShowForm(false);
+    setEditingCell(null);
+    setFormData({ activity: '', pleasure: '', mastery: '', time: '', day: 0, week: 0, customTime: '' });
+  };
+
+  const handleDelete = () => {
+    const key = getActivityKey(formData.week, formData.day, formData.time);
+    const newActivities = { ...activities };
+    delete newActivities[key];
+    setActivities(newActivities);
+    setShowForm(false);
+    setEditingCell(null);
+  };
+
+  const calculateDayMood = (week, day) => {
+    const dayActivities = Object.entries(activities).filter(([key]) => 
+      key.startsWith(`${week}-${day}-`)
+    );
+    
+    if (dayActivities.length === 0) return null;
+    
+    const moods = dayActivities.map(([_, data]) => {
+      const p = parseFloat(data.pleasure) || 0;
+      const m = parseFloat(data.mastery) || 0;
+      return (p + m) / 2;
+    });
+    
+    return (moods.reduce((a, b) => a + b, 0) / moods.length).toFixed(1);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExport = () => {
+    const dataStr = JSON.stringify(activities, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `activity-log-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        
+        // Analyze the import
+        let newCount = 0;
+        let conflictCount = 0;
+        
+        Object.keys(imported).forEach(key => {
+          if (activities[key]) {
+            conflictCount++;
+          } else {
+            newCount++;
+          }
+        });
+
+        setImportedData(imported);
+        setImportStats({ new: newCount, conflicts: conflictCount });
+        setShowImportConfirm(true);
+      } catch (err) {
+        alert('Invalid file format. Please select a valid activity log JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset file input
+    e.target.value = '';
+  };
+
+  const handleImportConfirm = (mergeStrategy) => {
+    if (!importedData) return;
+
+    let merged = { ...activities };
+
+    if (mergeStrategy === 'replace') {
+      // Replace conflicts with imported data
+      merged = { ...activities, ...importedData };
+    } else if (mergeStrategy === 'keep') {
+      // Keep existing data, only add new entries
+      Object.keys(importedData).forEach(key => {
+        if (!activities[key]) {
+          merged[key] = importedData[key];
+        }
+      });
+    } else if (mergeStrategy === 'overwrite') {
+      // Replace everything with imported data
+      merged = importedData;
+    }
+
+    setActivities(merged);
+    setShowImportConfirm(false);
+    setImportedData(null);
+  };
+
+  const handleClearData = () => {
+    setActivities({});
+    localStorage.removeItem('activityLog');
+    setShowClearConfirm(false);
+    setCurrentWeek(0);
+    setCurrentDay(0);
+  };
+
+  const getTimeSlotActivities = (week, time) => {
+    const activities_in_slot = [];
+    for (let day = 0; day < 7; day++) {
+      const key = getActivityKey(week, day, time);
+      if (activities[key]) {
+        activities_in_slot.push(activities[key]);
+      }
+    }
+    return activities_in_slot;
+  };
+
+  const canViewWeek = true;
+  return (
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Header */}
+      <div className="bg-blue-600 text-white p-4 sticky top-0 z-10 shadow-md print:static print:shadow-none">
+        <div className="flex justify-between items-center mb-3">
+          <h1 className="text-xl font-bold">Activity Log</h1>
+          <div className="flex gap-2 print:hidden">
+            {currentWeek !== 0 && (
+              <button
+                onClick={() => setCurrentWeek(0)}
+                className="bg-blue-500 px-3 py-2 rounded-lg hover:bg-blue-400 transition-colors text-sm font-semibold"
+              >
+                Jump to this week
+              </button>
+            )}
+              <button
+                onClick={() => setViewMode(viewMode === 'day' ? 'week' : 'day')}
+                className="bg-blue-500 px-3 py-2 rounded-lg hover:bg-blue-400 transition-colors text-sm font-semibold"
+              >
+                {viewMode === 'day' ? 'Week View' : 'Day View'}
+              </button>
+            {Object.keys(activities).length > 0 && (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                className="bg-red-500 px-3 py-2 rounded-lg hover:bg-red-400 transition-colors text-sm font-semibold"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {/* Week Navigation with Date Range */}
+        <div className="flex items-center justify-between mb-3 print:hidden">
+          <button
+            onClick={() => setCurrentWeek(currentWeek - 1)}
+            className="bg-blue-500 p-2 rounded-lg hover:bg-blue-400 transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <span className="font-semibold">
+            {getWeekRange(currentWeek)}
+          </span>
+          <button
+            onClick={() => setCurrentWeek(currentWeek + 1)}
+            className="bg-blue-500 p-2 rounded-lg hover:bg-blue-400 transition-colors"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+
+        {viewMode === 'day' && (
+          <>        
+            <div className="flex gap-2 overflow-x-auto pb-2 justify-center">              {days.map((day, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentDay(idx)}
+                  className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+                    currentDay === idx 
+                      ? 'bg-white text-blue-600 font-semibold' 
+                      : 'bg-blue-500 hover:bg-blue-400'
+                  }`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+            {calculateDayMood(currentWeek, currentDay) && (
+              <div className="mt-3 text-sm">
+                Average mood: {calculateDayMood(currentWeek, currentDay)}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Day View */}
+      {viewMode === 'day' && (
+        <div className="p-4">
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            {timeSlots.map((time, idx) => {
+              const key = getActivityKey(currentWeek, currentDay, time);
+              const activity = activities[key];
+              
+              return (
+                <div
+                  key={idx}
+                  onClick={() => handleCellClick(currentDay, time)}
+                  className={`border-b border-gray-200 p-3 min-h-[60px] cursor-pointer hover:bg-gray-50 transition-colors ${
+                    activity ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="font-semibold text-gray-600 text-sm">{time}</span>
+                    {activity && (
+                      <span className="text-xs text-gray-500">
+                        P:{activity.pleasure} M:{activity.mastery}
+                      </span>
+                    )}
+                  </div>
+                  {activity && (
+                    <div className="mt-1 text-sm text-gray-800">{activity.activity}</div>
+                  )}
+                </div>
+              );
+            })}
+            
+            {/* Custom time slots */}
+            {Object.entries(activities)
+              .filter(([key]) => {
+                const [week, day, time] = key.split('-');
+                return parseInt(week) === currentWeek && 
+                       parseInt(day) === currentDay && 
+                       !timeSlots.includes(time);
+              })
+              .map(([key, activity]) => {
+                const time = key.split('-')[2];
+                return (
+                  <div
+                    key={key}
+                    onClick={() => handleCellClick(currentDay, time)}
+                    className="border-b border-gray-200 p-3 min-h-[60px] cursor-pointer hover:bg-gray-50 transition-colors bg-blue-50"
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="font-semibold text-gray-600 text-sm">{time}</span>
+                      <span className="text-xs text-gray-500">
+                        P:{activity.pleasure} M:{activity.mastery}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-sm text-gray-800">{activity.activity}</div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {/* Week View */}
+      {viewMode === 'week' && (
+        <div className="p-4 print:p-0">
+          <div className="bg-white rounded-lg shadow-md overflow-x-auto print:shadow-none">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-100 border-b border-gray-300">
+                  <th className="p-2 text-left sticky left-0 bg-gray-100 min-w-[70px] border-r border-gray-300">Time</th>
+                  {days.map((day, idx) => {
+                    const date = getWeekDates(currentWeek)[idx];
+                    return (
+                      <th key={idx} className="p-2 text-center border-r border-gray-200 last:border-r-0">
+                        <div className="font-semibold">{day.slice(0, 3)}</div>
+                        <div className="text-[10px] text-gray-600 font-normal">{formatDate(date)}</div>
+                        {calculateDayMood(currentWeek, idx) && (
+                          <div className="text-[10px] text-gray-500 font-normal">
+                            Mood: {calculateDayMood(currentWeek, idx)}
+                          </div>
+                        )}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {timeSlots.map((time, timeIdx) => {
+                  const hasActivity = getTimeSlotActivities(currentWeek, time).length > 0;
+                  if (!hasActivity) return null;
+                  
+                  return (
+                    <tr key={timeIdx} className="border-b border-gray-200">
+                      <td className="p-2 font-semibold text-gray-600 sticky left-0 bg-white border-r border-gray-300 align-top">
+                        {time}
+                      </td>
+                      {days.map((_, dayIdx) => {
+                        const key = getActivityKey(currentWeek, dayIdx, time);
+                        const activity = activities[key];
+                        
+                        return (
+                          <td
+                            key={dayIdx}
+                            onClick={() => handleCellClick(dayIdx, time)}
+                            className={`p-2 cursor-pointer hover:bg-gray-50 transition-colors border-r border-gray-200 last:border-r-0 align-top print:cursor-default ${
+                              activity ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            {activity && (
+                              <div className="w-fit">
+                                <div className="text-[10px] text-gray-500 mb-1 whitespace-nowrap">
+                                  P:{activity.pleasure} M:{activity.mastery}
+                                </div>
+                                <div className="text-gray-800">
+                                  {activity.activity}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+                
+                {/* Custom time slots in week view */}
+                {Object.entries(activities)
+                  .filter(([key]) => {
+                    const [week, day, time] = key.split('-');
+                    return parseInt(week) === currentWeek && !timeSlots.includes(time);
+                  })
+                  .reduce((acc, [key]) => {
+                    const time = key.split('-')[2];
+                    if (!acc.includes(time)) acc.push(time);
+                    return acc;
+                  }, [])
+                  .map((time) => (
+                    <tr key={time} className="border-b border-gray-200">
+                      <td className="p-2 font-semibold text-gray-600 sticky left-0 bg-white border-r border-gray-300 align-top">
+                        {time}
+                      </td>
+                      {days.map((_, dayIdx) => {
+                        const key = getActivityKey(currentWeek, dayIdx, time);
+                        const activity = activities[key];
+                        
+                        return (
+                          <td
+                            key={dayIdx}
+                            onClick={() => handleCellClick(dayIdx, time)}
+                            className={`p-2 cursor-pointer hover:bg-gray-50 transition-colors border-r border-gray-200 last:border-r-0 align-top print:cursor-default ${
+                              activity ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            {activity && (
+                              <div className="w-fit">
+                                <div className="text-[10px] text-gray-500 mb-1 whitespace-nowrap">
+                                  P:{activity.pleasure} M:{activity.mastery}
+                                </div>
+                                <div className="text-gray-800">
+                                  {activity.activity}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      {viewMode === 'day' && currentWeek === 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-2 print:hidden">
+          <button
+            onClick={handleCurrentTime}
+            className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
+          >
+            <Clock size={20} />
+            Now
+          </button>
+          <button
+            onClick={handleQuickAdd}
+            className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={20} />
+            Add
+          </button>
+        </div>
+      )}
+
+      {/* Week View Action Buttons */}
+      {viewMode === 'week' && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-2 print:hidden">
+          <button
+            onClick={handleExport}
+            className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
+          >
+            <Upload size={20} />
+            Export
+          </button>
+          <button
+            onClick={handleImportClick}
+            className="flex-1 bg-orange-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-orange-700 transition-colors"
+          >
+            <Download size={20} />
+            Import
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors"
+          >
+            <Printer size={20} />
+            PDF
+          </button>
+          <button
+            onClick={() => setShowQR(true)}
+            className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors"
+          >
+            <QrCode size={20} />
+            Link
+          </button>
+        </div>
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
+      {/* Import Confirmation Modal */}
+      {showImportConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-30 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Import Data</h2>
+            
+            <div className="mb-6 space-y-2">
+              <p className="text-sm text-gray-700">
+                Found <strong>{importStats.new}</strong> new entries and <strong>{importStats.conflicts}</strong> entries that already exist in your current data.
+              </p>
+              <p className="text-sm text-gray-600">
+                How would you like to handle conflicts?
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => handleImportConfirm('keep')}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-left px-4"
+              >
+                <div className="font-bold">Keep Existing</div>
+                <div className="text-sm opacity-90">Import only new entries, keep current data for conflicts</div>
+              </button>
+              
+              <button
+                onClick={() => handleImportConfirm('replace')}
+                className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors text-left px-4"
+              >
+                <div className="font-bold">Replace Conflicts</div>
+                <div className="text-sm opacity-90">Import all entries, overwrite conflicts with file data</div>
+              </button>
+
+              <button
+                onClick={() => handleImportConfirm('overwrite')}
+                className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors text-left px-4"
+              >
+                <div className="font-bold">Replace All</div>
+                <div className="text-sm opacity-90">Delete current data and use only imported data</div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowImportConfirm(false);
+                  setImportedData(null);
+                }}
+                className="w-full bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Data Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-30 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4 text-red-600">Clear All Data?</h2>
+            
+            <div className="mb-6 space-y-2">
+              <p className="text-sm text-gray-700">
+                This will permanently delete all activities from all weeks.
+              </p>
+              <p className="text-sm font-semibold text-red-600">
+                This action cannot be undone.
+              </p>
+              <p className="text-sm text-gray-600 mt-4">
+                Consider exporting your data first to create a backup.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={handleClearData}
+                className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+              >
+                Yes, Delete All Data
+              </button>
+
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="w-full bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Modal */}
+      {showQR && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Link</h2>
+              <button onClick={() => setShowQR(false)} className="text-gray-500 hover:text-gray-700">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">URL</label>
+              <input
+                type="text"
+                value="https://yourusername.github.io/activity-log"
+                readOnly
+                className="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 text-sm"
+                onClick={(e) => e.target.select()}
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Use this link to return to your activity log.
+              </p>
+            </div>
+
+            <div className="flex justify-center mb-4">
+              <div className="bg-gray-200 p-4 rounded-lg">
+                <div className="w-48 h-48 flex items-center justify-center text-gray-500 text-sm text-center">
+                  QR code will appear here<br/>after deployment
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText('https://yourusername.github.io/activity-log');
+                alert('URL copied to clipboard!');
+              }}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Copy URL
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-end sm:items-center justify-center">
+          <div className="bg-white w-full sm:max-w-lg sm:rounded-t-2xl rounded-t-2xl max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-4">
+                {editingCell ? 'Edit Activity' : 'Add Activity'}
+              </h2>
+              
+              {!editingCell && (
+                <>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-2">Time (select or enter custom)</label>
+                    <select
+                      value={formData.time}
+                      onChange={(e) => setFormData({ ...formData, time: e.target.value, customTime: '' })}
+                      className="w-full border border-gray-300 rounded-lg p-3 mb-2"
+                    >
+                      {timeSlots.map((time, idx) => (
+                        <option key={idx} value={time}>{time}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={formData.customTime || ''}
+                      onChange={(e) => setFormData({ ...formData, customTime: e.target.value })}
+                      placeholder="Or enter custom time (e.g., 5-6am)"
+                      className="w-full border border-gray-300 rounded-lg p-3"
+                    />
+                  </div>
+                </>
+              )}
+              
+              {editingCell && (
+                <div className="mb-4 text-sm text-gray-600">
+                  {days[formData.day]} at {formData.time}
+                </div>
+              )}
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Activity</label>
+                <input
+                  type="text"
+                  value={formData.activity}
+                  onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-3"
+                  placeholder="What did you do?"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Pleasure (1-10)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.pleasure}
+                    onChange={(e) => setFormData({ ...formData, pleasure: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg p-3"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Mastery (1-10)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.mastery}
+                    onChange={(e) => setFormData({ ...formData, mastery: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg p-3"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                {editingCell && activities[getActivityKey(formData.week, formData.day, formData.time)] && (
+                  <button
+                    onClick={handleDelete}
+                    className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                  >
+                    Delete
+                  </button>
+                )}
+                <button
+                  onClick={handleSave}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @media print {
+          body { margin: 0; }
+          .print\\:hidden { display: none !important; }
+          .print\\:static { position: static !important; }
+          .print\\:shadow-none { box-shadow: none !important; }
+          .print\\:p-0 { padding: 0 !important; }
+          .print\\:block { display: block !important; }
+          .print\\:cursor-default { cursor: default !important; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default ActivityLog;
