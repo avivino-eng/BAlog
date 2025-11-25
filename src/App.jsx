@@ -313,14 +313,27 @@ const ActivityLog = () => {
           <div className="flex gap-2 print:hidden">
             {currentWeek !== 0 && (
               <button
-                onClick={() => setCurrentWeek(0)}
+                onClick={() => {
+                  setCurrentWeek(0);
+                  const today = new Date();
+                  const dayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
+                  setCurrentDay(dayIndex);
+                }}
                 className="bg-blue-500 px-3 py-2 rounded-lg hover:bg-blue-400 transition-colors text-sm font-semibold"
               >
-                This Week
+                Today
               </button>
             )}
             <button
-              onClick={() => setViewMode(viewMode === 'day' ? 'week' : 'day')}
+              onClick={() => {
+                if (viewMode === 'week') {
+                  // switching from week -> day, default to today
+                  const today = new Date();
+                  const dayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
+                  setCurrentDay(dayIndex);
+                }
+                setViewMode(viewMode === 'day' ? 'week' : 'day');
+              }}
               className="bg-blue-500 px-3 py-2 rounded-lg hover:bg-blue-400 transition-colors text-sm font-semibold"
             >
               {viewMode === 'day' ? 'Week View' : 'Day View'}
@@ -667,7 +680,13 @@ const ActivityLog = () => {
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-end sm:items-center justify-center">
           <div className="bg-white w-full sm:max-w-lg sm:rounded-t-2xl rounded-t-2xl max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
+            <form
+              className="p-6"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSave();
+              }}
+            >
               <h2 className="text-xl font-bold mb-4">
                 {editingCell ? 'Edit Activity' : 'Add Activity'}
               </h2>
@@ -730,13 +749,13 @@ const ActivityLog = () => {
                   </button>
                 )}
                 <button
-                  onClick={handleSave}
+                  type="submit"
                   className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                 >
                   Save
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
