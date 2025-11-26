@@ -25,7 +25,7 @@ const DropdownMenu = ({ open, onClose, position, children }) => {
   };
 
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-[9999] pointer-events-none print:hidden">
+    <div className="fixed inset-0 z-[9999] pointer-events-none">
       <div
         ref={ref}
         className="pointer-events-auto bg-white rounded-lg shadow-lg py-2 min-w-[160px]"
@@ -51,10 +51,8 @@ const MenuItem = ({ icon: Icon, children, danger, onClick }) => (
 );
 
 const ActivityLog = () => {
-  const [currentDay, setCurrentDay] = useState(() => {
-    const today = new Date();
-    return today.getDay() === 0 ? 6 : today.getDay() - 1;
-  });  const [currentWeek, setCurrentWeek] = useState(0);
+  const [currentDay, setCurrentDay] = useState(0);
+  const [currentWeek, setCurrentWeek] = useState(0);
   const [activities, setActivities] = useState({});
   const [moods, setMoods] = useState({});
   const [showForm, setShowForm] = useState(false);
@@ -101,9 +99,7 @@ const ActivityLog = () => {
     const now = new Date();
     const currentDayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
     const currentHour = now.getHours();
-    
-    // Extract the starting hour from the time slot
-    const slotHour = timeSlots.indexOf(timeSlot);
+    const slotIndex = timeSlots.indexOf(timeSlot);
     
     // Future week
     if (week > 0) return 'planned';
@@ -115,11 +111,9 @@ const ActivityLog = () => {
     if (day < currentDayOfWeek) {
       return currentStatus === 'planned' ? 'needs-review' : currentStatus;
     }
-// Same day - planned if slot hour is current or future
-console.log(`Same day check: timeSlot="${timeSlot}", slotHour=${slotHour}, currentHour=${currentHour}, comparison: ${slotHour} >= ${currentHour} = ${slotHour >= currentHour}`);
-if (slotHour >= currentHour) return 'planned';
-    // Same day - only planned if slot hour is strictly in the future
-    if (slotHour >= currentHour) return 'planned';
+    
+    // Same day - only planned if slot is strictly in the future
+    if (slotIndex > currentHour) return 'planned';
     return currentStatus === 'planned' ? 'needs-review' : currentStatus;
   };
 
@@ -190,10 +184,8 @@ if (slotHour >= currentHour) return 'planned';
     const newActivities = { ...activities };
     
     Object.keys(newActivities).forEach(key => {
-      const parts = key.split('-');
-      const week = parts[0];
-      const day = parts[1];
-      const time = parts.slice(2).join('-');      const activity = newActivities[key];
+      const [week, day, time] = key.split('-');
+      const activity = newActivities[key];
       const currentStatus = activity.status;
       const newStatus = getActivityStatus(parseInt(week), parseInt(day), time, currentStatus);
       
@@ -207,7 +199,7 @@ if (slotHour >= currentHour) return 'planned';
     if (updated) {
       setActivities(newActivities);
     }
-  }, [loaded]);
+  }, [loaded, currentWeek, currentDay]);
 
   const days = ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'];
   const timeSlots = [
@@ -356,7 +348,7 @@ if (slotHour >= currentHour) return 'planned';
         activity: formData.activity,
         pleasure: formData.pleasure,
         mastery: formData.mastery,
-        color: formData.color || 'gray',
+        color: formData.color,
         status: autoStatus
       }
     });
@@ -474,7 +466,7 @@ if (slotHour >= currentHour) return 'planned';
         <DropdownMenu
           open={showMenu}
           onClose={() => setShowMenu(false)}
-          position={{ left: 16, top: 64 }}
+          position={{ left: 16, top: 64 }} // matches your old menu position
         >
           <MenuItem icon={Upload} onClick={handleExport}>Export</MenuItem>
           <MenuItem icon={Download} onClick={handleImportClick}>Import</MenuItem>
@@ -571,7 +563,7 @@ if (slotHour >= currentHour) return 'planned';
                   style={activity?.color ? { backgroundColor: getColorRgba(activity.color, 0.2) } : {}}
                 >
                   <div className="flex justify-between items-start">
-                    <span className="font-semibold text-gray-600 text-sm">{time.replace('-', '-\u200B')}</span>
+                    <span className="font-semibold text-gray-600 text-sm">{time}</span>
                     {activity && (
                       <span className="text-xs text-gray-500">
                         P:{activity.pleasure} M:{activity.mastery}
@@ -639,7 +631,7 @@ if (slotHour >= currentHour) return 'planned';
                   return (
                     <tr key={timeIdx} className="border-b border-gray-200">
                       <td className="p-2 font-semibold text-gray-600 sticky left-0 bg-white border-r border-gray-300 align-top">
-                        {time.replace(/-/g, '-\u200B')}
+                        {time}
                       </td>
                       {days.map((_, dayIdx) => {
                         const key = getActivityKey(currentWeek, dayIdx, time);
@@ -1024,10 +1016,6 @@ if (slotHour >= currentHour) return 'planned';
           .print\\:p-0 { padding: 0 !important; }
           .print\\:cursor-default { cursor: default !important; }
           .print\\:pointer-events-none { pointer-events: none !important; }
-          .overflow-y-auto { 
-            overflow: visible !important; 
-             height: auto !important; 
-             max-height: none !important;        
         }
       `}</style>
     </div>
