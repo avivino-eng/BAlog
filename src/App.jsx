@@ -599,7 +599,7 @@ const handleImportClick = () => {
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-gray-100 border-b border-gray-300">
-                  <th className="p-2 text-left sticky left-0 bg-gray-100 min-w-[40px] border-r border-gray-300">Time</th>
+                  <th className="p-2 text-left sticky left-0 bg-gray-100 min-w-[50px] border-r border-gray-300">Time</th>
                   {days.map((day, idx) => {
                     const date = getWeekDates(currentWeek)[idx];
                     const moodKey = getMoodKey(currentWeek, idx);
@@ -626,7 +626,7 @@ const handleImportClick = () => {
                   
                   return (
                     <tr key={timeIdx} className="border-b border-gray-200">
-                      <td className="p-2 font-semibold text-gray-600 sticky left-0 bg-white min-w-[40px] border-r border-gray-300 align-top">
+                      <td className="p-2 font-semibold text-gray-600 sticky left-0 bg-white min-w-[50px] border-r border-gray-300 align-top">
                         {time.replace(/am-/g, 'am-\u200B').replace(/pm-/g, 'pm-\u200B')}
                       </td>
                       {days.map((_, dayIdx) => {
