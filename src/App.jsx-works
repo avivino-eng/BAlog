@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, ChevronLeft, ChevronRight, Printer, QrCode, X, Download, Upload, Menu } from 'lucide-react';
+import { Plus, Clock, ChevronLeft, ChevronRight, Printer, QrCode, X, Download, Upload, Menu } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import ReactDOM from "react-dom";
 
@@ -54,8 +54,7 @@ const ActivityLog = () => {
   const [currentDay, setCurrentDay] = useState(() => {
     const today = new Date();
     return today.getDay() === 0 ? 6 : today.getDay() - 1;
-  });
-  const [currentWeek, setCurrentWeek] = useState(0);
+  });  const [currentWeek, setCurrentWeek] = useState(0);
   const [activities, setActivities] = useState({});
   const [moods, setMoods] = useState({});
   const [showForm, setShowForm] = useState(false);
@@ -82,100 +81,76 @@ const ActivityLog = () => {
     week: 0
   });
 
-    const getColorRgba = (color, alpha = 0.2) => {
-    const colorMap = {
-        white: `rgba(255, 255, 255, ${alpha})`,
-        gray: `rgba(128, 128, 128, ${alpha})`,
-        yellow: `rgba(255, 255, 0, ${alpha})`,
-        orange: `rgba(255, 165, 0, ${alpha})`,
-        red: `rgba(220, 38, 38, ${alpha})`,
-        green: `rgba(0, 128, 0, ${alpha})`,
-        blue: `rgba(59, 130, 246, ${alpha})`,
-        purple: `rgba(128, 0, 128, ${alpha})`
-    };
-    return colorMap[color] || '';
-    };
-
-  const days = ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'];
-  const timeSlots = [
-    '12-1 am', '1-2 am', '2-3 am', '3-4 am', '4-5 am', '5-6 am',
-    '6-7 am', '7-8 am', '8-9 am', '9-10 am', '10-11 am', '11 am-12 pm',
-    '12-1 pm', '1-2 pm', '2-3 pm', '3-4 pm', '4-5 pm', '5-6 pm',
-    '6-7 pm', '7-8 pm', '8-9 pm', '9-10 pm', '10-11 pm', '11 pm-12 am'
-  ];
-
-  // Helper functions
-  const hasStatusStyling = (activity) => {
-    return ['planned', 'needs-review', 'completed'].includes(activity?.status);
+  const getColorRgba = (color, alpha = 0.2) => {
+  const colorMap = {
+    white: `rgba(255, 255, 255, ${alpha})`,
+    gray: `rgba(128, 128, 128, ${alpha})`,
+    yellow: `rgba(255, 255, 0, ${alpha})`,
+    orange: `rgba(255, 165, 0, ${alpha})`,
+    green: `rgba(0, 128, 0, ${alpha})`,
+    blue: `rgba(59, 130, 246, ${alpha})`,
+    purple: `rgba(128, 0, 128, ${alpha})`
   };
-
-  const getStatusClassName = (activity) => {
-    if (!activity?.status) return 'border-b border-gray-200';
-    const statusMap = {
-      planned: 'bg-blue-100 border-4 border-dashed border-blue-600',
-      'needs-review': 'bg-red-100 border-4 border-dashed border-red-600',
-      completed: 'bg-green-100 border-4 border-dashed border-green-600'
-    };
-    return statusMap[activity.status] || 'border-b border-gray-200';
-  };
-
-  const renderActivityContent = (activity) => {
-    if (activity.status === 'incomplete') {
-      return <div className="line-through text-gray-500">{activity.activity}</div>;
-    }
-    if (activity.replacement) {
-      return <div className="mt-1">{activity.replacement.activity}</div>;
-    }
-    return <div className={activity.status === 'planned' ? 'italic' : ''}>{activity.activity}</div>;
-  };
+  return colorMap[color] || '';
+};
 
   const getActivityStatus = (week, day, timeSlot, currentStatus) => {
+    // If already completed, don't change
     if (currentStatus === 'completed') return 'completed';
     
     const now = new Date();
     const currentDayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
     const currentHour = now.getHours();
+    
+    // Extract the starting hour from the time slot
     const slotHour = timeSlots.indexOf(timeSlot);
     
+    // Future week
     if (week > 0) return 'planned';
+    // Past week
     if (week < 0) return currentStatus;
     
+    // Current week - check day
     if (day > currentDayOfWeek) return 'planned';
     if (day < currentDayOfWeek) {
       return currentStatus === 'planned' ? 'needs-review' : currentStatus;
     }
-    
+// Same day - planned if slot hour is current or future
+console.log(`Same day check: timeSlot="${timeSlot}", slotHour=${slotHour}, currentHour=${currentHour}, comparison: ${slotHour} >= ${currentHour} = ${slotHour >= currentHour}`);
+if (slotHour >= currentHour) return 'planned';
+    // Same day - only planned if slot hour is strictly in the future
     if (slotHour >= currentHour) return 'planned';
     return currentStatus === 'planned' ? 'needs-review' : currentStatus;
   };
 
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(false); 
 
-  useEffect(() => {
-    const savedActivities = localStorage.getItem('activityLog');
-    const savedMoods = localStorage.getItem('activityMoods');
+ useEffect(() => {
+  const savedActivities = localStorage.getItem('activityLog');
+  const savedMoods = localStorage.getItem('activityMoods');
 
-    if (savedActivities) {
-      try {
-        setActivities(JSON.parse(savedActivities));
-      } catch (e) {
-        console.error('Failed to parse saved activities:', e);
-      }
+  if (savedActivities) {
+    try {
+      setActivities(JSON.parse(savedActivities));
+    } catch (e) {
+      console.error('Failed to parse saved activities:', e);
     }
+  }
 
-    if (savedMoods) {
-      try {
-        setMoods(JSON.parse(savedMoods));
-      } catch (e) {
-        console.error('Failed to parse saved moods:', e);
-      }
+  if (savedMoods) {
+    try {
+      setMoods(JSON.parse(savedMoods));
+    } catch (e) {
+      console.error('Failed to parse saved moods:', e);
     }
+  }
 
-    setLoaded(true);
-  }, []);
+  setLoaded(true); // mark that loading is complete
+}, []);
 
+  // Save to localStorage whenever activities or moods change
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded) return; // skip saving until initial load is done
     localStorage.setItem('activityLog', JSON.stringify(activities));
   }, [activities, loaded]);
 
@@ -184,11 +159,19 @@ const ActivityLog = () => {
     localStorage.setItem('activityMoods', JSON.stringify(moods));
   }, [moods, loaded]);
 
+  // Scroll to current time on day view mount/change
   useEffect(() => {
     if (viewMode === 'day' && currentWeek === 0 && dayViewRef.current) {
       const now = new Date();
       const hour = now.getHours();
-      const scrollIndex = hour < 12 ? 7 : 12;
+      let scrollIndex;
+      
+      if (hour < 12) {
+        scrollIndex = Math.max(0, 7 - 0); // 7am
+      } else {
+        scrollIndex = Math.max(0, 12 - 0); // 12pm
+      }
+      
       const timeSlotHeight = 60;
       const scrollPosition = scrollIndex * timeSlotHeight;
       
@@ -198,9 +181,11 @@ const ActivityLog = () => {
     }
   }, [viewMode, currentWeek, currentDay]);
 
+  // Update activity statuses based on current time
   useEffect(() => {
     if (!loaded) return;
     
+    const now = new Date();
     let updated = false;
     const newActivities = { ...activities };
     
@@ -208,12 +193,12 @@ const ActivityLog = () => {
       const parts = key.split('-');
       const week = parts[0];
       const day = parts[1];
-      const time = parts.slice(2).join('-');
-      const activity = newActivities[key];
+      const time = parts.slice(2).join('-');      const activity = newActivities[key];
       const currentStatus = activity.status;
       const newStatus = getActivityStatus(parseInt(week), parseInt(day), time, currentStatus);
       
       if (newStatus !== currentStatus) {
+        console.log('Status change detected:', {key, time, currentStatus, newStatus});
         newActivities[key] = { ...activity, status: newStatus };
         updated = true;
       }
@@ -223,6 +208,14 @@ const ActivityLog = () => {
       setActivities(newActivities);
     }
   }, [loaded]);
+
+  const days = ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'];
+  const timeSlots = [
+    '12-1 am', '1-2 am', '2-3 am', '3-4 am', '4-5 am', '5-6 am',
+    '6-7 am', '7-8 am', '8-9 am', '9-10 am', '10-11 am', '11 am-12 pm',
+    '12-1 pm', '1-2 pm', '2-3 pm', '3-4 pm', '4-5 pm', '5-6 pm',
+    '6-7 pm', '7-8 pm', '8-9 pm', '9-10 pm', '10-11 pm', '11 pm-12 am'
+  ];
 
   const getActivityKey = (week, day, time) => `${week}-${day}-${time}`;
   const getMoodKey = (week, day) => `${week}-${day}`;
@@ -293,8 +286,7 @@ const ActivityLog = () => {
       mastery: '',
       time: timeSlots[timeIndex],
       day: currentDay,
-      week: currentWeek,
-      color: ''
+      week: currentWeek
     });
     setEditingCell(null);
     setShowForm(true);
@@ -306,6 +298,7 @@ const ActivityLog = () => {
     const key = getActivityKey(formData.week, formData.day, formData.time);
     const existing = activities[key];
     
+    // If saving a replacement for an incomplete activity
     if (existing?.status === 'incomplete' && !editingCell) {
       setActivities({
         ...activities,
@@ -328,23 +321,34 @@ const ActivityLog = () => {
     
     let autoStatus;
     if (editingCell) {
+      // Keep existing status if editing
       autoStatus = activities[key]?.status || null;
     } else {
+      // For new activities, check if it's in the future
       const now = new Date();
       const currentDayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
       const currentHour = now.getHours();
       const slotIndex = timeSlots.indexOf(formData.time);
       
+      // Future week
       if (formData.week > 0) {
         autoStatus = 'planned';
-      } else if (formData.week === 0 && formData.day > currentDayOfWeek) {
+      }
+      // Current week, future day
+      else if (formData.week === 0 && formData.day > currentDayOfWeek) {
         autoStatus = 'planned';
-      } else if (formData.week === 0 && formData.day === currentDayOfWeek && slotIndex > currentHour) {
+      }
+      // Current week, current day, future hour
+      else if (formData.week === 0 && formData.day === currentDayOfWeek && slotIndex > currentHour) {
         autoStatus = 'planned';
-      } else {
+      }
+      // Otherwise, regular activity
+      else {
         autoStatus = null;
       }
     }
+    
+    console.log('Saving with status:', autoStatus);
     
     setActivities({
       ...activities,
@@ -390,26 +394,15 @@ const ActivityLog = () => {
     window.print();
   };
 
-const handleExport = () => {
-  setShowMenu(false);
-  const data = {
-    activities,
-    moods,
-    exportDate: new Date().toISOString()
+  const handleExport = () => {
+    setShowMenu(false);
+    alert('Export functionality coming soon!');
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `activity-log-${new Date().toISOString().split('T')[0]}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-};
 
-const handleImportClick = () => {
-  setShowMenu(false);
-  fileInputRef.current?.click();
-};
+  const handleImportClick = () => {
+    setShowMenu(false);
+    alert('Import functionality coming soon!');
+  };
 
   const handleClearData = () => {
     setActivities({});
@@ -458,12 +451,13 @@ const handleImportClick = () => {
                 }}
                 className="bg-blue-500 px-3 py-2 rounded-lg hover:bg-blue-400 transition-colors text-sm font-semibold"
               >
-                {viewMode === 'week' ? 'This Week' : 'Today'}
+                Today
               </button>
             )}
             <button
               onClick={() => {
                 if (viewMode === 'week') {
+                  // switching from week -> day, default to today
                   const today = new Date();
                   const dayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
                   setCurrentDay(dayIndex);
@@ -485,6 +479,7 @@ const handleImportClick = () => {
           <MenuItem icon={Upload} onClick={handleExport}>Export</MenuItem>
           <MenuItem icon={Download} onClick={handleImportClick}>Import</MenuItem>
           <MenuItem icon={Printer} onClick={handlePrint}>PDF</MenuItem>
+
           <MenuItem
             icon={QrCode}
             onClick={() => {
@@ -494,6 +489,7 @@ const handleImportClick = () => {
           >
             Link
           </MenuItem>
+
           <MenuItem
             icon={X}
             danger
@@ -506,7 +502,7 @@ const handleImportClick = () => {
           </MenuItem>
         </DropdownMenu>
         
-        {/* Week Navigation */}
+        {/* Week Navigation with Date Range */}
         <div className="flex items-center justify-between mb-3 print:hidden">
           <button
             onClick={() => setCurrentWeek(currentWeek - 1)}
@@ -526,7 +522,7 @@ const handleImportClick = () => {
         </div>
 
         {viewMode === 'day' && (
-          <>
+          <>        
             <div className="flex gap-1 overflow-x-auto pb-2 justify-center">
               {days.map((day, idx) => (
                 <button
@@ -564,13 +560,19 @@ const handleImportClick = () => {
                   key={idx}
                   onClick={() => handleCellClick(currentDay, time)}
                   className={`p-3 min-h-[60px] cursor-pointer hover:bg-gray-50 transition-colors ${
-                    getStatusClassName(activity)
+                    activity?.status === 'planned' || activity?.status === 'needs-review' || activity?.status === 'completed' ? '' : 'border-b border-gray-200'
+                  } ${
+                    activity?.status === 'planned' ? 'bg-blue-100 border-4 border-dashed border-blue-600' : ''
+                  } ${
+                    activity?.status === 'needs-review' ? 'bg-red-100 border-4 border-dashed border-red-600' : ''
+                  } ${
+                    activity?.status === 'completed' ? 'bg-green-100 border-4 border-dashed border-green-600' : ''
                   }`}
                   style={
-                    hasStatusStyling(activity) 
-                      ? {} 
-                      : (activity?.color ? { backgroundColor: getColorRgba(activity.color, 0.2) } : {})
-                    }
+                  activity?.status === 'planned' || activity?.status === 'needs-review' || activity?.status === 'completed' 
+                    ? {} 
+                    : (activity ? { backgroundColor: 'rgba(128, 128, 128, 0.2)' } : {})
+                }
                 >
                   <div className="flex justify-between items-start">
                     <span className="font-semibold text-gray-600 text-sm">{time.replace('-', '-\u200B')}</span>
@@ -580,11 +582,25 @@ const handleImportClick = () => {
                       </span>
                     )}
                   </div>
-                  {activity && (
-                    <div className="mt-1 text-sm text-gray-800">
-                      {renderActivityContent(activity)}
-                    </div>
-                  )}
+                    {activity && (
+                      <div className={`mt-1 text-sm text-gray-800`}>
+                        {activity.status === 'incomplete' && (
+                          <div className="line-through text-gray-500">
+                            {activity.activity}
+                          </div>
+                        )}
+                        {activity.replacement && (
+                          <div className="mt-1">
+                            {activity.replacement.activity}
+                          </div>
+                        )}
+                        {activity.status !== 'incomplete' && !activity.replacement && (
+                          <div className={activity.status === 'planned' ? 'italic' : ''}>
+                            {activity.activity}
+                          </div>
+                        )}
+                      </div>
+                    )}
                 </div>
               );
             })}
@@ -638,13 +654,18 @@ const handleImportClick = () => {
                             key={dayIdx}
                             onClick={() => handleCellClick(dayIdx, time)}
                             className={`p-2 cursor-pointer hover:bg-gray-50 transition-colors align-top print:cursor-default ${
-                              hasStatusStyling(activity) ? '' : 'border-r border-gray-200'
+                              activity?.status === 'planned' || activity?.status === 'needs-review' || activity?.status === 'completed' ? '' : 'border-r border-gray-200'
                             } last:border-r-0 ${
-                              getStatusClassName(activity)
+                              activity?.status === 'planned' ? 'bg-blue-100 border-4 border-dashed border-blue-600' : ''
+                            } ${
+                              activity?.status === 'needs-review' ? 'bg-red-100 border-4 border-dashed border-red-600' : ''
+                            } ${
+                              activity?.status === 'completed' ? 'bg-green-100 border-4 border-dashed border-green-600' : ''
                             }`}
-                            style={hasStatusStyling(activity) 
-                                ? {} 
-                                : (activity?.color ? { backgroundColor: getColorRgba(activity.color, 0.2) } : {})
+                            style={
+                            activity?.status === 'planned' || activity?.status === 'needs-review' || activity?.status === 'completed' 
+                              ? {} 
+                              : {}
                             }
                           >
                             {activity && (
@@ -652,9 +673,21 @@ const handleImportClick = () => {
                                 <div className="text-[10px] text-gray-500 mb-1 whitespace-nowrap">
                                   P:{activity.pleasure} M:{activity.mastery}
                                 </div>
-                                <div className="text-gray-800">
-                                  {renderActivityContent(activity)}
-                                </div>
+                                {activity.status === 'incomplete' && (
+                                  <div className="line-through text-gray-500 text-gray-800">
+                                    {activity.activity}
+                                  </div>
+                                )}
+                                {activity.replacement && (
+                                  <div className="mt-1 text-gray-800">
+                                    {activity.replacement.activity}
+                                  </div>
+                                )}
+                                {activity.status !== 'incomplete' && !activity.replacement && (
+                                  <div className={`text-gray-800 ${activity.status === 'planned' ? 'italic' : ''}`}>
+                                    {activity.activity}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </td>
@@ -688,30 +721,15 @@ const handleImportClick = () => {
         </div>
       )}
 
+      {/* Hidden file input - for future use */}
       <input
         ref={fileInputRef}
         type="file"
         accept=".json"
         className="hidden"
-        onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
-                setActivities(data.activities || {});
-                setMoods(data.moods || {});
-                alert('Data imported successfully!');
-            } catch (err) {
-                alert('Failed to import: Invalid file format');
-            }
-            };
-            reader.readAsText(file);
-            e.target.value = '';
-        }}
-    />
+        disabled
+      />
+
       {/* Clear Data Confirmation Modal */}
       {showClearConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-30 flex items-center justify-center p-4">
@@ -734,6 +752,7 @@ const handleImportClick = () => {
               >
                 Yes, delete all data
               </button>
+
               <button
                 onClick={() => setShowClearConfirm(false)}
                 className="w-full bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
@@ -814,7 +833,6 @@ const handleImportClick = () => {
                   placeholder="1-10"
                   autoFocus
                   inputMode="numeric"
-                  required
                 />
               </div>
 
@@ -839,28 +857,119 @@ const handleImportClick = () => {
       )}
 
       {/* Activity Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-end sm:items-center justify-center">
-          <div className="bg-white w-full sm:max-w-lg sm:rounded-t-2xl rounded-t-2xl max-h-[80vh] overflow-y-auto">
-            {editingCell && activities[getActivityKey(formData.week, formData.day, formData.time)]?.status === 'needs-review' ? (
-              <div className="p-6">
-                <h2 className="text-xl font-bold mb-4">Planned Activity</h2>
-                
-                <div className="mb-4 text-lg text-gray-600">
-                  {days[formData.day]} at {formData.time}
+        {showForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-end sm:items-center justify-center">
+            <div className="bg-white w-full sm:max-w-lg sm:rounded-t-2xl rounded-t-2xl max-h-[80vh] overflow-y-auto">
+              {/* Check if this is a needs-review activity */}
+              {editingCell && activities[getActivityKey(formData.week, formData.day, formData.time)]?.status === 'needs-review' ? (
+                // REVIEW PROMPT
+                <div className="p-6">
+                  <h2 className="text-xl font-bold mb-4">Planned Activity</h2>
+                  
+                  <div className="mb-4 text-sm text-gray-600">
+                    {days[formData.day]} at {formData.time}
+                  </div>
+
+                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-2">You planned:</p>
+                    <p className="font-semibold">{formData.activity}</p>
+                  </div>
+
+                  <p className="text-center mb-6 font-medium">Did you complete this activity?</p>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        const key = getActivityKey(formData.week, formData.day, formData.time);
+                        setActivities({
+                          ...activities,
+                          [key]: { 
+                            ...activities[key], 
+                            status: 'completed' 
+                          }
+                        });
+                        setShowForm(false);
+                        setEditingCell(null);
+                      }}
+                      className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => {
+                        const key = getActivityKey(formData.week, formData.day, formData.time);
+                        setActivities({
+                          ...activities,
+                          [key]: { 
+                            ...activities[key], 
+                            status: 'incomplete'
+                          }
+                        });
+                        // Clear form for replacement entry but keep it open
+                        setFormData({
+                          ...formData,
+                          activity: '',
+                          pleasure: '',
+                          mastery: '',
+                          color: ''
+                        });
+                        setEditingCell(null); // Clear editing state so it saves as replacement
+                      }}
+                      className="flex-1 bg-gray-600 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                    >
+                      No
+                    </button>
+                  </div>
                 </div>
+              ) : (
+                // NORMAL FORM
+                <form
+                  className="p-6"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSave();
+                  }}
+                >
+                  <h2 className="text-xl font-bold mb-4">
+                    {editingCell ? 'Edit Activity' : 'Add Activity'}
+                  </h2>
+                  
+                  <div className="mb-4 text-sm text-gray-600">
+                    {days[formData.day]} at {formData.time}
+                  </div>
 
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-2">You planned:</p>
-                  <p className="font-semibold">{formData.activity}</p>
-                </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-2">Activity</label>
+                    <input
+                      type="text"
+                      value={formData.activity}
+                      onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg p-3"
+                      placeholder="What did you do?"
+                    />
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-2">Color</label>
+                    <div className="flex gap-2">
+                      {['white', 'gray', 'yellow', 'orange', 'green', 'blue', 'purple'].map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, color })}
+                          className={`w-10 h-10 rounded-lg border-2 transition-all ${
+                            formData.color === color ? 'border-blue-600 scale-110' : 'border-gray-300'
+                          }`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
 
-                <p className="text-center mb-6 font-medium">Did you complete this activity?</p>
-
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="grid grid-cols-2 gap-4 mb-6">
                     <div>
-                        <label className="block text-sm font-medium mb-2">Pleasure (1-10)</label>
-                        <input
+                      <label className="block text-sm font-medium mb-2">Pleasure (1-10)</label>
+                      <input
                         type="number"
                         min="1"
                         max="10"
@@ -868,12 +977,11 @@ const handleImportClick = () => {
                         onChange={(e) => setFormData({ ...formData, pleasure: e.target.value })}
                         className="w-full border border-gray-300 rounded-lg p-3"
                         inputMode="numeric"
-                        required
-                        />
+                      />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-2">Mastery (1-10)</label>
-                        <input
+                      <label className="block text-sm font-medium mb-2">Mastery (1-10)</label>
+                      <input
                         type="number"
                         min="1"
                         max="10"
@@ -881,161 +989,39 @@ const handleImportClick = () => {
                         onChange={(e) => setFormData({ ...formData, mastery: e.target.value })}
                         className="w-full border border-gray-300 rounded-lg p-3"
                         inputMode="numeric"
-                        required
-                        />
-                    </div>
-                </div>
-
-                <div className="flex gap-2">
-                <button
-                    onClick={() => {
-                        if (!formData.pleasure || !formData.mastery) {
-                            alert('Please enter Pleasure and Mastery ratings (1-10)');
-                            return;
-                        }
-                        
-                        const key = getActivityKey(formData.week, formData.day, formData.time);
-                        setActivities({
-                            ...activities,
-                            [key]: { 
-                            ...activities[key],
-                            pleasure: formData.pleasure,
-                            mastery: formData.mastery,
-                            status: 'completed' 
-                            }
-                        });
-                        setShowForm(false);
-                        setEditingCell(null);
-                    }}
-                    className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
-                    >
-                    Yes
-            </button>       
-                  <button
-                    onClick={() => {
-                      const key = getActivityKey(formData.week, formData.day, formData.time);
-                      setActivities({
-                        ...activities,
-                        [key]: { 
-                          ...activities[key], 
-                          status: 'incomplete'
-                        }
-                      });
-                      setFormData({
-                        ...formData,
-                        activity: '',
-                        pleasure: '',
-                        mastery: '',
-                        color: ''
-                      });
-                      setEditingCell(null);
-                    }}
-                    className="flex-1 bg-gray-600 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
-                  >
-                    No
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <form
-                className="p-6"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSave();
-                }}
-              >
-                <h2 className="text-xl font-bold mb-4">
-                  {editingCell ? 'Edit Activity' : 'Add Activity'}
-                </h2>
-                
-                <div className="mb-4 text-lg text-gray-600">
-                  {days[formData.day]} at {formData.time}
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Activity</label>
-                  <input
-                    type="text"
-                    value={formData.activity}
-                    onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg p-3"
-                    placeholder="What did you do?"
-                  />
-                </div>
-                
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Color</label>
-                  <div className="flex gap-2">
-                    {['white', 'gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple'].map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, color })}
-                        className={`w-10 h-10 rounded-lg border-2 transition-all ${
-                          formData.color === color ? 'border-blue-600 scale-110' : 'border-gray-300'
-                        }`}
-                        style={{ backgroundColor: color }}
                       />
-                    ))}
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Pleasure (1-10)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={formData.pleasure}
-                      onChange={(e) => setFormData({ ...formData, pleasure: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg p-3"
-                      inputMode="numeric"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Mastery (1-10)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={formData.mastery}
-                      onChange={(e) => setFormData({ ...formData, mastery: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg p-3"
-                      inputMode="numeric"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  {editingCell && activities[getActivityKey(formData.week, formData.day, formData.time)] && (
+                  <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={handleDelete}
-                      className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                      onClick={() => setShowForm(false)}
+                      className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
                     >
-                      Delete
+                      Cancel
                     </button>
-                  )}
-                  <button
-                    type="submit"
-                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                  >
-                    Save
-                  </button>
-                </div>
-              </form>
-            )}
+                    {editingCell && activities[getActivityKey(formData.week, formData.day, formData.time)] && (
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       <style>{`
         @media print {
@@ -1048,9 +1034,8 @@ const handleImportClick = () => {
           .print\\:pointer-events-none { pointer-events: none !important; }
           .overflow-y-auto { 
             overflow: visible !important; 
-            height: auto !important; 
-            max-height: none !important;
-          }
+             height: auto !important; 
+             max-height: none !important;        
         }
       `}</style>
     </div>
