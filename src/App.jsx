@@ -456,7 +456,7 @@ const handleImportClick = () => {
                   const dayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1;
                   setCurrentDay(dayIndex);
                 }}
-                className="bg-blue-500 px-3 py-2 rounded-lg hover:bg-blue-400 transition-colors text-sm font-semibold"
+                className="bg-blue-500 px-2 py-2 rounded-lg hover:bg-blue-400 transition-colors text-sm font-semibold"
               >
                 {viewMode === 'week' ? 'This Week' : 'Today'}
               </button>
@@ -470,7 +470,7 @@ const handleImportClick = () => {
                 }
                 setViewMode(viewMode === 'day' ? 'week' : 'day');
               }}
-              className="bg-blue-500 px-3 py-2 rounded-lg hover:bg-blue-400 transition-colors text-sm font-semibold"
+              className="bg-blue-500 px-2 py-2 rounded-lg hover:bg-blue-400 transition-colors text-sm font-semibold"
             >
               {viewMode === 'day' ? 'Week View' : 'Day View'}
             </button>
