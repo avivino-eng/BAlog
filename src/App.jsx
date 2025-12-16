@@ -166,52 +166,24 @@ const renderActivityContent = (activity) => {
 
   const [loaded, setLoaded] = useState(false);
 
+  // Load activities and moods once on mount
   useEffect(() => {
     const savedActivities = localStorage.getItem('activityLog');
     const savedMoods = localStorage.getItem('activityMoods');
-
-    if (savedActivities) {
-      try {
-        const parsed = JSON.parse(savedActivities);
-        // Check if migration needed (old format has keys like "0-3-6-7 pm" or "-1-3-6-7 pm")
-        const needsMigration = Object.keys(parsed).some(key => key.match(/^-?\d+-\d+-/));
-        
-        if (needsMigration) {
-          console.log('Old activity data format detected - clearing to avoid bugs');
-          localStorage.removeItem('activityLog');
-        } else {
-          setActivities(parsed);
-        }
-      } catch (e) {
-        console.error('Failed to parse saved activities:', e);
-      }
-    }
-
-    if (savedMoods) {
-      try {
-        const parsed = JSON.parse(savedMoods);
-        // Check if migration needed (old format has keys like "0-3" or "-1-5")
-        const needsMigration = Object.keys(parsed).some(key => key.match(/^-?\d+-\d+$/));
-        
-        if (needsMigration) {
-          console.log('Old mood data format detected - clearing to avoid bugs');
-          localStorage.removeItem('activityMoods');
-        } else {
-          setMoods(parsed);
-        }
-      } catch (e) {
-        console.error('Failed to parse saved moods:', e);
-      }
-    }
-
+    
+    if (savedActivities) setActivities(JSON.parse(savedActivities));
+    if (savedMoods) setMoods(JSON.parse(savedMoods));
+    
     setLoaded(true);
   }, []);
 
+  // Save activities on change (only after initial load)
   useEffect(() => {
     if (!loaded) return;
     localStorage.setItem('activityLog', JSON.stringify(activities));
   }, [activities, loaded]);
 
+  // Save moods on change (only after initial load)
   useEffect(() => {
     if (!loaded) return;
     localStorage.setItem('activityMoods', JSON.stringify(moods));
@@ -232,8 +204,7 @@ const renderActivityContent = (activity) => {
   }, [viewMode, currentWeek, currentDay]);
 
   useEffect(() => {
-    if (!loaded) return;
-    
+      
     let updated = false;
     const newActivities = { ...activities };
     
@@ -251,7 +222,7 @@ const renderActivityContent = (activity) => {
     if (updated) {
       setActivities(newActivities);
     }
-  }, [loaded]);
+  }, [loaded, activities]);
 
   const getActivityKey = (week, day, time) => {
     const dates = getWeekDates(week);
@@ -441,8 +412,8 @@ const handleImportClick = () => {
   const handleClearData = () => {
     setActivities({});
     setMoods({});
-    localStorage.removeItem('activityLog');
-    localStorage.removeItem('activityMoods');
+    //localStorage.removeItem('activityLog');
+    //localStorage.removeItem('activityMoods');
     setShowClearConfirm(false);
     setShowMenu(false);
     setCurrentWeek(0);
