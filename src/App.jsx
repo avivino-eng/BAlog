@@ -598,7 +598,7 @@ const handleImportClick = () => {
                       ? {} 
                       : {
                           backgroundColor: getColorRgba(
-                            activity?.replacement?.color || activity?.color || 'gray',
+                            activity?.replacement?.color || activity?.color || 'white',
                             0.2
                           )
                         }
@@ -679,7 +679,7 @@ const handleImportClick = () => {
                                   ? {} 
                                   : {
                                       backgroundColor: getColorRgba(
-                                        activity?.replacement?.color || activity?.color || 'gray',
+                                        activity?.replacement?.color || activity?.color || 'white',
                                         0.2
                                       )
                                     }
