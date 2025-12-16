@@ -116,22 +116,22 @@ const ActivityLog = () => {
       'needs-review': 'bg-red-100 border-4 border-dashed border-red-600',
       completed: 'bg-green-100 border-4 border-dashed border-green-600'
     };
-    return statusMap[activity.status] || 'border-b border-gray-200';
+    return statusMap[activity?.status] || 'border-b border-gray-200';
   };
 
 const renderActivityContent = (activity) => {
-  if (activity.replacement) {
+  if (activity?.replacement) {
     return (
       <>
-        <div className="line-through text-gray-500">{activity.activity}</div>
-        <div className="mt-1">{activity.replacement.activity}</div>
+        <div className="line-through text-gray-500">{activity?.activity}</div>
+        <div className="mt-1">{activity?.replacement.activity}</div>
       </>
     );
   }
-  if (activity.status === 'incomplete') {
-    return <div className="line-through text-gray-500">{activity.activity}</div>;
+  if (activity?.status === 'incomplete') {
+    return <div className="line-through text-gray-500">{activity?.activity}</div>;
   }
-  return <div className={activity.status === 'planned' ? 'italic' : ''}>{activity.activity}</div>;
+  return <div className={activity?.status === 'planned' ? 'italic' : ''}>{activity?.activity}</div>;
 };
 
   const getActivityStatus = (activityKey, currentStatus) => {
@@ -239,7 +239,7 @@ const renderActivityContent = (activity) => {
     
     Object.keys(newActivities).forEach(key => {
       const activity = newActivities[key];
-      const currentStatus = activity.status;
+      const currentStatus = activity?.status;
       const newStatus = getActivityStatus(key, currentStatus); // Pass key instead of parsing it here
       
       if (newStatus !== currentStatus) {
@@ -598,7 +598,7 @@ const handleImportClick = () => {
                       ? {} 
                       : {
                           backgroundColor: getColorRgba(
-                            activity.replacement?.color || activity.color || 'gray',
+                            activity?.replacement?.color || activity?.color || 'gray',
                             0.2
                           )
                         }
@@ -608,7 +608,7 @@ const handleImportClick = () => {
                     <span className="font-semibold text-gray-600 text-sm">{time.replace('-', '-\u200B')}</span>
                     {activity && (
                       <span className="text-xs text-gray-500">
-                        P:{activity.replacement?.pleasure || activity.pleasure} M:{activity.replacement?.mastery || activity.mastery}
+                        P:{activity?.replacement?.pleasure || activity?.pleasure} M:{activity?.replacement?.mastery || activity?.mastery}
                       </span>
                     )}
                   </div>
@@ -679,7 +679,7 @@ const handleImportClick = () => {
                                   ? {} 
                                   : {
                                       backgroundColor: getColorRgba(
-                                        activity.replacement?.color || activity.color || 'gray',
+                                        activity?.replacement?.color || activity?.color || 'gray',
                                         0.2
                                       )
                                     }
@@ -688,7 +688,7 @@ const handleImportClick = () => {
                             {activity && (
                               <div className="w-fit">
                                 <div className="text-[10px] text-gray-500 mb-1 whitespace-nowrap">
-                                  P:{activity.replacement?.pleasure || activity.pleasure} M:{activity.replacement?.mastery || activity.mastery}
+                                  P:{activity?.replacement?.pleasure || activity?.pleasure} M:{activity?.replacement?.mastery || activity?.mastery}
                                 </div>
                                 <div className="text-gray-800">
                                   {renderActivityContent(activity)}
