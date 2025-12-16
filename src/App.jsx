@@ -119,33 +119,48 @@ const ActivityLog = () => {
     return statusMap[activity.status] || 'border-b border-gray-200';
   };
 
-  const renderActivityContent = (activity) => {
-    if (activity.status === 'incomplete') {
-      return <div className="line-through text-gray-500">{activity.activity}</div>;
-    }
-    if (activity.replacement) {
-      return <div className="mt-1">{activity.replacement.activity}</div>;
-    }
-    return <div className={activity.status === 'planned' ? 'italic' : ''}>{activity.activity}</div>;
-  };
+const renderActivityContent = (activity) => {
+  if (activity.replacement) {
+    return (
+      <>
+        <div className="line-through text-gray-500">{activity.activity}</div>
+        <div className="mt-1">{activity.replacement.activity}</div>
+      </>
+    );
+  }
+  if (activity.status === 'incomplete') {
+    return <div className="line-through text-gray-500">{activity.activity}</div>;
+  }
+  return <div className={activity.status === 'planned' ? 'italic' : ''}>{activity.activity}</div>;
+};
 
-  const getActivityStatus = (week, day, timeSlot, currentStatus) => {
+  const getActivityStatus = (activityKey, currentStatus) => {
     if (currentStatus === 'completed') return 'completed';
     
+    // Parse date and time from key: "2024-12-09-6-7 pm"
+    const parts = activityKey.split('-');
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1; // JS months are 0-indexed
+    const day = parseInt(parts[2]);
+    const timeSlot = parts.slice(3).join('-');
+    
+    const activityDate = new Date(year, month, day);
     const now = new Date();
-    const currentDayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
-    const currentHour = now.getHours();
-    const slotHour = timeSlots.indexOf(timeSlot);
     
-    if (week > 0) return 'planned';
-    if (week < 0) return currentStatus;
+    // Compare dates (ignore time for day comparison)
+    const activityDateOnly = new Date(year, month, day);
+    const todayDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    if (day > currentDayOfWeek) return 'planned';
-    if (day < currentDayOfWeek) {
+    if (activityDateOnly > todayDateOnly) return 'planned'; // Future date
+    if (activityDateOnly < todayDateOnly) {
       return currentStatus === 'planned' ? 'needs-review' : currentStatus;
     }
     
-    if (slotHour >= currentHour) return 'planned';
+    // Same day - check time
+    const currentHour = now.getHours();
+    const slotHour = timeSlots.indexOf(timeSlot);
+    
+    if (slotHour > currentHour) return 'planned';
     return currentStatus === 'planned' ? 'needs-review' : currentStatus;
   };
 
@@ -157,7 +172,16 @@ const ActivityLog = () => {
 
     if (savedActivities) {
       try {
-        setActivities(JSON.parse(savedActivities));
+        const parsed = JSON.parse(savedActivities);
+        // Check if migration needed (old format has keys like "0-3-6-7 pm" or "-1-3-6-7 pm")
+        const needsMigration = Object.keys(parsed).some(key => key.match(/^-?\d+-\d+-/));
+        
+        if (needsMigration) {
+          console.log('Old activity data format detected - clearing to avoid bugs');
+          localStorage.removeItem('activityLog');
+        } else {
+          setActivities(parsed);
+        }
       } catch (e) {
         console.error('Failed to parse saved activities:', e);
       }
@@ -165,7 +189,16 @@ const ActivityLog = () => {
 
     if (savedMoods) {
       try {
-        setMoods(JSON.parse(savedMoods));
+        const parsed = JSON.parse(savedMoods);
+        // Check if migration needed (old format has keys like "0-3" or "-1-5")
+        const needsMigration = Object.keys(parsed).some(key => key.match(/^-?\d+-\d+$/));
+        
+        if (needsMigration) {
+          console.log('Old mood data format detected - clearing to avoid bugs');
+          localStorage.removeItem('activityMoods');
+        } else {
+          setMoods(parsed);
+        }
       } catch (e) {
         console.error('Failed to parse saved moods:', e);
       }
@@ -205,13 +238,9 @@ const ActivityLog = () => {
     const newActivities = { ...activities };
     
     Object.keys(newActivities).forEach(key => {
-      const parts = key.split('-');
-      const week = parts[0];
-      const day = parts[1];
-      const time = parts.slice(2).join('-');
       const activity = newActivities[key];
       const currentStatus = activity.status;
-      const newStatus = getActivityStatus(parseInt(week), parseInt(day), time, currentStatus);
+      const newStatus = getActivityStatus(key, currentStatus); // Pass key instead of parsing it here
       
       if (newStatus !== currentStatus) {
         newActivities[key] = { ...activity, status: newStatus };
@@ -224,8 +253,18 @@ const ActivityLog = () => {
     }
   }, [loaded]);
 
-  const getActivityKey = (week, day, time) => `${week}-${day}-${time}`;
-  const getMoodKey = (week, day) => `${week}-${day}`;
+  const getActivityKey = (week, day, time) => {
+    const dates = getWeekDates(week);
+    const date = dates[day];
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return `${dateStr}-${time}`;
+  };
+  const getMoodKey = (week, day) => {
+    const dates = getWeekDates(week);
+    const date = dates[day];
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return dateStr;
+  };
 
   const getWeekDates = (weekOffset) => {
     const today = new Date();
@@ -329,21 +368,9 @@ const ActivityLog = () => {
     let autoStatus;
     if (editingCell) {
       autoStatus = activities[key]?.status || null;
-    } else {
-      const now = new Date();
-      const currentDayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1;
-      const currentHour = now.getHours();
-      const slotIndex = timeSlots.indexOf(formData.time);
-      
-      if (formData.week > 0) {
-        autoStatus = 'planned';
-      } else if (formData.week === 0 && formData.day > currentDayOfWeek) {
-        autoStatus = 'planned';
-      } else if (formData.week === 0 && formData.day === currentDayOfWeek && slotIndex > currentHour) {
-        autoStatus = 'planned';
-      } else {
-        autoStatus = null;
-      }
+    } else {     
+      const savedKey = getActivityKey(formData.week, formData.day, formData.time);
+      autoStatus = getActivityStatus(savedKey, null);
     }
     
     setActivities({
@@ -569,14 +596,19 @@ const handleImportClick = () => {
                   style={
                     hasStatusStyling(activity) 
                       ? {} 
-                      : (activity?.color ? { backgroundColor: getColorRgba(activity.color, 0.2) } : {})
-                    }
+                      : {
+                          backgroundColor: getColorRgba(
+                            activity.replacement?.color || activity.color || 'gray',
+                            0.2
+                          )
+                        }
+                  }
                 >
                   <div className="flex justify-between items-start">
                     <span className="font-semibold text-gray-600 text-sm">{time.replace('-', '-\u200B')}</span>
                     {activity && (
                       <span className="text-xs text-gray-500">
-                        P:{activity.pleasure} M:{activity.mastery}
+                        P:{activity.replacement?.pleasure || activity.pleasure} M:{activity.replacement?.mastery || activity.mastery}
                       </span>
                     )}
                   </div>
@@ -642,15 +674,21 @@ const handleImportClick = () => {
                             } last:border-r-0 ${
                               getStatusClassName(activity)
                             }`}
-                            style={hasStatusStyling(activity) 
-                                ? {} 
-                                : (activity?.color ? { backgroundColor: getColorRgba(activity.color, 0.2) } : {})
-                            }
+                              style={
+                                hasStatusStyling(activity) 
+                                  ? {} 
+                                  : {
+                                      backgroundColor: getColorRgba(
+                                        activity.replacement?.color || activity.color || 'gray',
+                                        0.2
+                                      )
+                                    }
+                              }
                           >
                             {activity && (
                               <div className="w-fit">
                                 <div className="text-[10px] text-gray-500 mb-1 whitespace-nowrap">
-                                  P:{activity.pleasure} M:{activity.mastery}
+                                  P:{activity.replacement?.pleasure || activity.pleasure} M:{activity.replacement?.mastery || activity.mastery}
                                 </div>
                                 <div className="text-gray-800">
                                   {renderActivityContent(activity)}
